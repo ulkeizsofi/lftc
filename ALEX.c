@@ -4,8 +4,8 @@
 #include <stdlib.h>
 
 #define START_OFFSET 0
-
-#define MAX_STATES 61
+#define STATE_FILE "state_descriptor.txt"
+#define MAX_STATES 66
 #define MAX_NO_CHAR 255
 
 #define NAME_MAX 100
@@ -16,9 +16,20 @@
 typedef enum code {ID, CT_INT, CT_REAL, CT_CHAR, 
 	CT_STRING, COMMA, SEMICOLON, LPAR, 
 	RPAR, LBRACKET, RBRACKET, LACC, 
-	RACC, ADD, SUB, MUL, DIV, DOT, AND,
-	OR, NOT, ASSIGN, EQUAL, NOTEQ, LESS,
-	LESSEQ, GREATER, GREATEREQ} codd;
+	RACC, ADD, INC, SUB, 
+	DEC, MUL, DIV, DOT, 
+	AND, BAND, OR, BOR, 
+	NOT, ASSIGN, EQUAL, NOTEQ, 
+	LESS, LESSEQ, GREATER, GREATEREQ} codd;
+
+char* names[] = {"ID","CT_INT","CT_REAL","CT_CHAR",
+"CT_STRING","COMMA","SEMICOLON","LPAR",
+"RPAR","LBRACKET","RBRACKET","LACC",
+"RACC","ADD","INC","SUB",
+"DEC","MUL","DIV","DOT",
+"AND","BAND","OR","BOR",
+"NOT","ASSIGN","EQUAL","NOTEQ",
+"LESS","LESSEQ","GREATER","GREATEREQ"};
 
 typedef struct _Token{
 	enum code cod;
@@ -31,14 +42,15 @@ typedef struct _Token{
 	struct _Token *next;
 }Token;
 
-typedef int (*stateHandler)(char* ch, int length);
+typedef int (*stateHandler)(char* ch, int length, enum code cod, int line);
 typedef int stateID;
 
 
 typedef struct _State{
 	stateID id;
-	stateID next[MAX_NO_CHAR];
+	stateID next[MAX_NO_CHAR + 5];
 	stateID elseID;
+	int cod;
 	stateHandler handler;
 }State;
 
@@ -51,15 +63,19 @@ void addToken(struct _Token **first, struct _Token* toAdd);
 Token* createToken(enum code cod, char* text, int* i, double* r, int line);
 void printToken(struct _Token* token);
 void printTokenList(struct _Token *token);
+int createInitialStateFile();
 int createStates(State *stt);
 int initState(State *stt, stateID defaultNext);
 int addIntToken(char* ch, int length);
 int addStringToken(char* ch, int length);
+int addGenericToken(char* ch, int length, enum code cod, int line);
+void printState(State* stt);
 
 
 int main(){
 	char input[BUFF_SIZE_MAX];
 	readFromFile("first.c", input);
+	int line_nr = 0;
 	printf("%s\n", input);
 	tk = NULL;
 	int count = 0;
@@ -69,9 +85,14 @@ int main(){
 	currentState = &states[INITIAL_STATE_ID];
 	int tokenStart = 0;
 	while( input[count] != '\0'){
+		if (input[count] == '\n'){
+			printf("%c %d\n", input[count], line_nr);
+			line_nr++;
+		}
 		if (currentState->handler){
 		
-			currentState->handler(&input[tokenStart], count - tokenStart);
+			currentState->handler(&input[tokenStart], count - tokenStart, 
+				currentState->cod, line_nr);
 		}
 		
 		stateID nextState = currentState->next[input[count] - START_OFFSET];
@@ -87,6 +108,7 @@ int main(){
 		currentState = &states[nextState];
 	}
 	printTokenList(tk);
+	return 0;
 }
 
 void readFromFile(char* c_file, char* buffer){
@@ -121,9 +143,19 @@ void addToken(struct _Token** first, struct _Token* toAdd){
 // TODO: should check input type and use only that input (no need to pass as pointer)
 Token* createToken(enum code cod, char* text, int* i, double* r, int line){
 	Token *token = (Token*)malloc(sizeof(Token));
-
 	token->cod = cod;
-	if (text != NULL){
+	switch (cod){
+	case ID: case CT_STRING: token->text = text;;
+		break;
+	case CT_INT: token->i = atoi(text);
+		break;
+	case CT_CHAR: token->i = text[0];
+		//TODO: add the appropriate char
+		break;
+	case CT_REAL: token->r = strtod(text, NULL);
+		break;
+	}
+	/*if (text != NULL){
 
 		token->text = text;
 	}
@@ -134,7 +166,7 @@ Token* createToken(enum code cod, char* text, int* i, double* r, int line){
 		else{
 			token->r = *r;
 		}
-	}
+	}*/
 	//TODO: check the parameterlist to make sure the union is ok
 	token->line_nr = line;
 	token->next = NULL;
@@ -143,7 +175,7 @@ Token* createToken(enum code cod, char* text, int* i, double* r, int line){
 }
 
 void printToken(struct _Token* token){
-	printf("%d\t",token->cod);
+	printf("%s\t",names[token->cod]);
 	switch(token->cod){
 		case ID: case CT_STRING: printf("%s\t",token->text);
 		break;
@@ -176,46 +208,108 @@ int initState(State *stt, stateID defaultNext){
 	}
 	return 0;
 }
+int createInitialStateFile(){
+	FILE *file;
+	file = fopen(STATE_FILE, "w");
+	if (file == NULL){
+		perror("Cannot open the file to write\n");
+	}
+
+	for (int i = 0; i < MAX_STATES; i++){
+		fprintf(file, "%d\n", i);//id
+		fprintf(file, "%d\n", -1);//generate
+		for (int j = 0; j < MAX_NO_CHAR - START_OFFSET; j++){
+		
+			fprintf(file, "%c ", j);
+		}//vector
+		fprintf(file, "\n");
+		fprintf(file, "%d\n", ERROR_STATE_ID);
+	}
+	fclose(file);
+}
 
 int createStates(State *stt){
+	
+	FILE *file;
+	file = fopen(STATE_FILE, "r");
+	if (file == NULL){
+		perror("Cannot open the file to read\n");
+	}
+
 	State* state = &stt[0];
-	initState(state, 0);
-	state->id = 0;//May be duplicate information
+	int id, gen, next;
+	char ch, start_ch, end_ch;
+	while (!feof(file)){
+		fscanf(file, "%d\n", &id);
+		state = &stt[id];
+		initState(state, ERROR_STATE_ID);
+		
+		state->id = id;
+		fscanf(file, "%d\n", &gen);
+		state->cod = gen;
+		
+		if (gen >= 0){
+			state->handler = addGenericToken;
+		}
+		
+		do
+		{
+			fscanf(file, "%c-%c %d%c", &start_ch, &end_ch, &next, &ch);
 
-	for(char i = '0'; i <= '9'; i++ ){
-		state->next[i] = 1;
+			if (start_ch == '^'){
+				for (int i = 0; i <= MAX_NO_CHAR; i++){
+					if (i != end_ch ) state->next[i] = next;
+				}
+			}
+			if (start_ch != 'i' || end_ch != 'i'){
+				for (int i = start_ch; i <= end_ch; i++){
+					state->next[i] = next;
+				}
+			}
+		} while (ch != '\n'); 
+		fscanf(file, "%d\n", &(state->elseID));
+
 	}
-	for(char i = 'a'; i <= 'z'; i++ ){
-		state->next[i] = 2;
-	}
+	return 0;
 
-	state = &stt[1];
-	initState(state, ERROR_STATE_ID);
-	state->id = 1;//May be duplicate information
-	state->elseID = 4;
-	for(char i = '0'; i <= '9'; i++ ){
-		state->next[i] = 1;
-	}
+	//State* state = &stt[0];
+	//initState(state, 0);
+	//state->id = 0;//May be duplicate information
 
-	state = &stt[2];
-	initState(state, ERROR_STATE_ID);
-	state->id = 2;//May be duplicate information
-	state->elseID = 5;
-	for(char i = 'a' - START_OFFSET; i <= 'z'; i++ ){
-		state->next[i] = 2;
-	}
+	//for(char i = '0'; i <= '9'; i++ ){
+	//	state->next[i] = 1;
+	//}
+	//for(char i = 'a'; i <= 'z'; i++ ){
+	//	state->next[i] = 2;
+	//}
 
-	state = &stt[4];
-	initState(state, ERROR_STATE_ID);
-	state->id = 4;//May be duplicate information
-	state->elseID = INITIAL_STATE_ID;
-	state->handler = addIntToken;
+	//state = &stt[1];
+	//initState(state, ERROR_STATE_ID);
+	//state->id = 1;//May be duplicate information
+	//state->elseID = 4;
+	//for(char i = '0'; i <= '9'; i++ ){
+	//	state->next[i] = 1;
+	//}
 
-	state = &stt[5];
-	initState(state, ERROR_STATE_ID);
-	state->id = 5;//May be duplicate information
-	state->elseID = INITIAL_STATE_ID;
-	state->handler = addStringToken;	
+	//state = &stt[2];
+	//initState(state, ERROR_STATE_ID);
+	//state->id = 2;//May be duplicate information
+	//state->elseID = 5;
+	//for(char i = 'a' - START_OFFSET; i <= 'z'; i++ ){
+	//	state->next[i] = 2;
+	//}
+
+	//state = &stt[4];
+	//initState(state, ERROR_STATE_ID);
+	//state->id = 4;//May be duplicate information
+	//state->elseID = INITIAL_STATE_ID;
+	//state->handler = addIntToken;
+
+	//state = &stt[5];
+	//initState(state, ERROR_STATE_ID);
+	//state->id = 5;//May be duplicate information
+	//state->elseID = INITIAL_STATE_ID;
+	//state->handler = addStringToken;	
 }
 
 int addIntToken(char* ch, int length){
@@ -235,4 +329,20 @@ int addStringToken(char* ch, int length){
 	str[length] = 0;
 	Token *token = createToken(CT_STRING, str, NULL, NULL, 2);
 	addToken(&tk, token);
+}
+
+int addGenericToken(char* ch, int length, enum code cod, int line){
+	char *str = (char*)malloc(sizeof(char)*(length + 1));
+	memcpy(str, ch, length);
+	str[length] = 0;
+	Token *token = createToken(cod, str, NULL, NULL, line);
+	addToken(&tk, token);
+}
+
+void printState(State* stt){
+	printf("id: %d\thandler:%c\t", stt->id, stt->handler == NULL ? 'n' : 'y');
+	for (int i = 0; i < MAX_NO_CHAR - START_OFFSET; i++){
+		if (stt->next[i] != ERROR_STATE_ID) printf("%c: %d\t", i, stt->next[i]);
+	}
+	printf("else: %d\n", stt->elseID);
 }
