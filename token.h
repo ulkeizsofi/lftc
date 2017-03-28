@@ -8,7 +8,10 @@ typedef enum code {ID, CT_INT, CT_REAL, CT_CHAR,
 	DEC, MUL, DIV, DOT, 
 	AND, BAND, OR, BOR, 
 	NOT, ASSIGN, EQUAL, NOTEQ, 
-	LESS, LESSEQ, GREATER, GREATEREQ} codd;
+	LESS, LESSEQ, GREATER, GREATEREQ, 
+	C_END, BREAK, CHAR, DOUBLE,
+	ELSE, FOR, IF, INT,
+	RETURN, STRUCT, VOID, WHILE, INCLUDE} codd;
 
 
 typedef struct _Token{
@@ -22,14 +25,6 @@ typedef struct _Token{
 	struct _Token *next;
 }Token;
 
-char* names[] = {"ID","CT_INT","CT_REAL","CT_CHAR",
-"CT_STRING","COMMA","SEMICOLON","LPAR",
-"RPAR","LBRACKET","RBRACKET","LACC",
-"RACC","ADD","INC","SUB",
-"DEC","MUL","DIV","DOT",
-"AND","BAND","OR","BOR",
-"NOT","ASSIGN","EQUAL","NOTEQ",
-"LESS","LESSEQ","GREATER","GREATEREQ"};
 
 void addToken(struct _Token **first, struct _Token* toAdd);
 Token* createToken(enum code cod, char* text, int* i, double* r, int line);
