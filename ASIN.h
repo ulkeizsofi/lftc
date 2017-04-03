@@ -8,7 +8,8 @@
 #ifndef ASIN_H_
 #define ASIN_H_
 
-#include token.h
+#include "token.h"
+#include <stdlib.h>
 
 #define TRUE 1
 #define FALSE 0
@@ -16,26 +17,11 @@
 
 typedef struct _Token_Error{
 	Token* tk;
-	char errorMsg[100];
+	char* errorMsg;
 }Token_Error;
 
-int isExprPrimary(Token* tk);
-int consume(int code, Token** crtTk);
-int isExprPostfix(Token** tk);
-int isExpr(Token** tk);
-int isExprUnary(Token** tk);
-int isExprCast(Token** tk);
-int isExprMul(Token** tk);
-int isTypeBase(Token** tk);
-int isExprAdd(Token** tk);
-int isExprRel(Token** tk);
-int isExprEq(Token** tk);
-int isExprAnd(Token** tk);
-int isExprOr(Token** tk);
-int isExprAssign(Token** tk);
-int isArrayDecl(Token** tk);
-int isVarDecl(Token** tk);
-int isStructDecl(Token** tk);
-int isFuncDecl(Token** tk);
+
+int isUnit(Token** tk);
+char* checkError(int* line);
 
 #endif /* ASIN_H_ */

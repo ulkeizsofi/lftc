@@ -1,5 +1,7 @@
-#include <stdio.h>
-
+int a;
+struct b{
+	double c;
+};
 void mainika()
 {
 	if (0xc == 014)puts("\"egal\"\t\t(h,o)");

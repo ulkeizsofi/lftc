@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include "token.h"
+#include "ASIN.h"
 
 #define START_OFFSET 0
 #define STATE_FILE "state_descriptor.txt"
@@ -91,6 +92,15 @@ int main(int argc, char** argv) {
 	Token *token_end = createToken(C_END, NULL, NULL, NULL, line_nr);
 	addToken(&tk, token_end);
 	printTokenList(tk);
+	printf("%d\n",isUnit(&tk) );
+
+	int ln;
+	char* err = checkError(&ln);
+	if (err != NULL){
+	printf("%s\n", err);
+	printf("at line: %d\n", ln);
+	}
+	else printf("No error\n");
 	return 0;
 }
 
