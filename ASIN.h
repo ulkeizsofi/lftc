@@ -16,7 +16,7 @@
 #define MAX_ERR_NO 100
 
 typedef struct _Token_Error{
-	Token* tk;
+	int line;
 	char* errorMsg;
 }Token_Error;
 

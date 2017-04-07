@@ -1,11 +1,19 @@
-int a;
-struct b{
-	double c;
-};
-void mainika()
+struct Pt{
+	int x,y;
+	};
+
+struct Pt	{	int points[20/4+5];};
+
+int		count()
 {
-	if (0xc == 014)puts("\"egal\"\t\t(h,o)");
-	else put_s("\"inegal\"\t\t(h,o)");
-	if (20E-1 == 2.0&&0.2e+1 == 0x2)put_c('=');
-	else put_c('\\');
+	int		i,n;
+	for(i=n=0;i<10;i=i+1){
+		if(points[i].x>=0&&points[i].y>=0)n=n+1;
+		}
+	return n;
+}
+
+void main()
+{
+	put_i(count());
 }
