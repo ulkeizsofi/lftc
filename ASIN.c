@@ -35,10 +35,11 @@ int isStm(Token** tk);
 int isStmCompound(Token** tk);
 
 void addTkError(int line, const char* errMsg) {
-
-	tkError.line = line;
-	tkError.errorMsg = (char*) malloc(100 * sizeof(char));
-	strcpy(tkError.errorMsg, errMsg);
+	if (!isError()) {
+		tkError.line = line;
+		tkError.errorMsg = (char*) malloc(100 * sizeof(char));
+		strcpy(tkError.errorMsg, errMsg);
+	}
 }
 
 int isError() {
@@ -103,7 +104,8 @@ int isExprPrimary(Token** tk) {
 			if (isExpr(tk)) {
 				while (consume(COMMA, tk)) {
 					if (!isExpr(tk)) {
-						addTkError((*tk)->line_nr, "missing expression or sintax error");
+						addTkError((*tk)->line_nr,
+								"missing expression or sintax error");
 						*tk = savedTk;
 						return FALSE;
 					}
@@ -116,8 +118,7 @@ int isExprPrimary(Token** tk) {
 				*tk = savedTk;
 				return FALSE;
 			}
-		}
-		else{
+		} else {
 			return TRUE;
 		}
 	}
@@ -143,18 +144,17 @@ int isExprPostfix(Token** tk) {
 		if (brack) {
 			if (!isExpr(tk)) {
 				*tk = savedTk;
-				;
 				return FALSE;
 			}
 			if (!consume(RBRACKET, tk)) {
+				addTkError((*tk)->line_nr, "missing }");
 				*tk = savedTk;
-				;
 				return FALSE;
 			}
 		} else if (dot) { //Postfix + DOT + ID
 			if (!consume(ID, tk)) {
+				addTkError((*tk)->line_nr, "missing ID");
 				*tk = savedTk;
-				;
 				return FALSE;
 			}
 		}
@@ -227,8 +227,8 @@ int isExprMul(Token** tk) {
 	//(MUL|DIV + Cast)* then TRUE
 	while (consume(MUL, tk) || consume(DIV, tk)) {
 		if (!isExprCast(tk)) {
+			addTkError((*tk)->line_nr, "missing expression");
 			*tk = savedTk;
-			;
 			return FALSE;
 		}
 	}
@@ -252,8 +252,8 @@ int isExprAdd(Token** tk) {
 	//(ADD|SUB + Mul)* then TRUE
 	while (consume(ADD, tk) || consume(SUB, tk)) {
 		if (!isExprMul(tk)) {
+			addTkError((*tk)->line_nr, "missing expression");
 			*tk = savedTk;
-			;
 			return FALSE;
 		}
 	}
@@ -278,6 +278,7 @@ int isExprRel(Token** tk) {
 	while (consume(LESS, tk) || consume(LESSEQ, tk) || consume(GREATER, tk)
 			|| consume(GREATEREQ, tk)) {
 		if (!isExprAdd(tk)) {
+			addTkError((*tk)->line_nr, "missing expression");
 			*tk = savedTk;
 			return FALSE;
 		}
@@ -301,6 +302,7 @@ int isExprEq(Token** tk) {
 	//(EQUAL|NOTEQ + Rel)* then TRUE
 	while (consume(EQUAL, tk) || consume(NOTEQ, tk)) {
 		if (!isExprRel(tk)) {
+			addTkError((*tk)->line_nr, "missing expression");
 			*tk = savedTk;
 			return FALSE;
 		}
@@ -324,6 +326,8 @@ int isExprAnd(Token** tk) {
 	//(AND + Eq)* then TRUE
 	while (consume(AND, tk)) {
 		if (!isExprEq(tk)) {
+			addTkError((*tk)->line_nr, "missing expression");
+
 			*tk = savedTk;
 			return FALSE;
 		}
@@ -347,6 +351,7 @@ int isExprOr(Token** tk) {
 	//(AND + Eq)* then TRUE
 	while (consume(OR, tk)) {
 		if (!isExprAnd(tk)) {
+			addTkError((*tk)->line_nr, "missing expression");
 			*tk = savedTk;
 			return FALSE;
 		}
@@ -365,8 +370,10 @@ int isExprAssign(Token** tk) {
 	if (isExprUnary(tk)) {
 		if (consume(ASSIGN, tk)) {
 			int isAssign = isExprAssign(tk);
-			if (!isAssign)
+			if (!isAssign) {
+				addTkError((*tk)->line_nr, "missing expression");
 				*tk = savedTk;
+			}
 			return isAssign; //This Assign is just a Unary
 		} else
 			*tk = savedTk;
@@ -391,6 +398,9 @@ int isTypeBase(Token** tk) {
 	if (isError())
 		return FALSE;
 
+	//Save the current token in case of returning false
+	Token* savedTk = *tk;
+
 	//INT | DOUBLE | CHAR | STRUCT ID
 	if (consume(INT, tk))
 		return TRUE;
@@ -398,7 +408,13 @@ int isTypeBase(Token** tk) {
 		return TRUE;
 	if (consume(CHAR, tk))
 		return TRUE;
-	//if (consume(STRUCT, tk) ) return TRUE;
+	if (consume(STRUCT, tk)) {
+		if (consume(ID, tk))
+			return TRUE;
+		*tk = savedTk;
+		return FALSE;
+	}
+
 	return FALSE;
 }
 
@@ -438,6 +454,7 @@ int isVarDecl(Token** tk) {
 	isArrayDecl(tk);
 	while (consume(COMMA, tk)) {
 		if (!consume(ID, tk)) {
+			addTkError((*tk)->line_nr, "missing ID");
 			*tk = savedTk;
 			return FALSE;
 		}
@@ -445,6 +462,7 @@ int isVarDecl(Token** tk) {
 	}
 	if (consume(SEMICOLON, tk))
 		return TRUE;
+	addTkError((*tk)->line_nr, "missing ;");
 	*tk = savedTk;
 	return FALSE;
 }
@@ -459,25 +477,24 @@ int isStructDecl(Token** tk) {
 	if (!consume(STRUCT, tk))
 		return FALSE;
 	if (!consume(ID, tk)) {
-		addTkError((*tk)->line_nr,"ID is missing in STRUCT statement");
+		addTkError((*tk)->line_nr, "ID is missing in STRUCT statement");
 		*tk = savedTk;
 		return FALSE;
 	}
 	if (!consume(LACC, tk)) {
-		addTkError((*tk)->line_nr,"{ is missing in STRUCT statement");
 		*tk = savedTk;
 		return FALSE;
 	}
 	while (isVarDecl(tk))
 		;
 	if (!consume(RACC, tk)) {
-		addTkError((*tk)->line_nr,"} is missing in STRUCT statement");
+		addTkError((*tk)->line_nr, "} is missing in STRUCT statement");
 		*tk = savedTk;
 		return FALSE;
 	}
 	if (consume(SEMICOLON, tk))
 		return TRUE;
-	addTkError((*tk)->line_nr,"; is missing in STRUCT statement");
+	addTkError((*tk)->line_nr, "; is missing in STRUCT statement");
 	*tk = savedTk;
 	return FALSE;
 }
@@ -569,7 +586,8 @@ int isIF(Token** tk) {
 				} else
 					addTkError((*tk)->line_nr, "missing ) or syntax error");
 			} else
-				addTkError((*tk)->line_nr, "missing expression or syntax error");
+				addTkError((*tk)->line_nr,
+						"missing expression or syntax error");
 		} else
 			addTkError((*tk)->line_nr, "missing ( after if or syntax error");
 	}
@@ -631,7 +649,8 @@ int isFor(Token** tk) {
 					if (isStm(tk)) {
 						return TRUE;
 					} else {
-						addTkError((*tk)->line_nr, "missing statement or syntax error");
+						addTkError((*tk)->line_nr,
+								"missing statement or syntax error");
 					}
 				} else {
 					addTkError((*tk)->line_nr, "missing ) or syntax error");

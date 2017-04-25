@@ -101,6 +101,7 @@ int main(int argc, char** argv) {
 	printf("at line: %d\n", ln);
 	}
 	else printf("No error\n");
+	//freeTokenList(tk);
 	return 0;
 }
 

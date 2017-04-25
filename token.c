@@ -141,22 +141,11 @@ Token* createToken(enum code cod, char* text, int* i, double* r, int line){
 	default:
 		break;
 	}
-	/*if (text != NULL){
 
-		token->text = text;
-	}
-	else{
-		if (i != NULL){
-			token->i = *i;
-		}
-		else{
-			token->r = *r;
-		}
-	}*/
-	//TODO: check the parameterlist to make sure the union is ok
 	token->line_nr = line;
 	token->next = NULL;
-
+	if (text != NULL)
+	free(help_text);
 	return token;
 }
 
@@ -189,24 +178,6 @@ void printTokenList(struct _Token *token){
 	}
 }
 
-// int addIntToken(char* ch, int length){
-// 	char *str = (char*)malloc(sizeof(char)*(length + 1));
-// 	memcpy(str, ch, length);
-// 	str[length] = 0;
-	
-// 	int nr = atoi(str);
-// 	Token *token = createToken(CT_INT, NULL, &nr, NULL, 1);
-// 	addToken(&tk, token);
-// }
-
-
-// int addStringToken(char* ch, int length){
-// 	char *str = (char*)malloc(sizeof(char)*(length + 1));
-// 	memcpy(str, ch, length);
-// 	str[length] = 0;
-// 	Token *token = createToken(CT_STRING, str, NULL, NULL, 2);
-// 	addToken(&tk, token);
-// }
 
 int addGenericToken(Token** tk, char* ch, int length, enum code cod, int line){
 	char *str = (char*)malloc(sizeof(char)*(length + 1));
@@ -224,4 +195,16 @@ int addGenericToken(Token** tk, char* ch, int length, enum code cod, int line){
 	Token *token = createToken(cod, str, NULL, NULL, line);
 	addToken(tk, token);
 	return 0;
+}
+
+void freeTokenList(Token* tk){
+	Token *tk_help;
+	Token *tk_to_free;
+
+	tk_help = tk;
+	while (tk_help->next != NULL){
+		tk_to_free = tk_help;
+		tk_help = tk_help->next;
+		free(tk_to_free);
+	}
 }

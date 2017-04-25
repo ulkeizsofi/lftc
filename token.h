@@ -31,5 +31,6 @@ Token* createToken(enum code cod, char* text, int* i, double* r, int line);
 void printToken(struct _Token* token);
 void printTokenList(struct _Token *token);
 int addGenericToken(Token** tk, char* ch, int length, enum code cod, int line);
+void freeTokenList(Token* tk);
 
 #endif
