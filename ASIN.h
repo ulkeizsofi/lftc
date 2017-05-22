@@ -10,6 +10,8 @@
 
 #include "token.h"
 #include <stdlib.h>
+#include "symbol.h"
+#include "type.h"
 
 #define TRUE 1
 #define FALSE 0
@@ -21,7 +23,8 @@ typedef struct _Token_Error{
 }Token_Error;
 
 
-int isUnit(Token** tk);
+Symbols* isUnit(Token* tk, RetVal val);
 char* checkError(int* line);
+void addTkError(int line, const char* errMsg);
 
 #endif /* ASIN_H_ */

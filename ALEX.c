@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "token.h"
 #include "ASIN.h"
+#include "symbol.h"
 
 #define START_OFFSET 0
 #define STATE_FILE "state_descriptor.txt"
@@ -31,6 +32,7 @@ typedef struct _State {
 
 //head of Token List
 Token *tk;
+RetVal crtVal;
 
 int readFromFile(FILE* file, char* buffer);
 FILE *openFile(char* file_name);
@@ -63,6 +65,7 @@ int main(int argc, char** argv) {
 	FILE* file = openFile(argv[1]);
 
 	while ((nRead = readFromFile(file, input)) != 0) {
+		count = 0;
 		//printf("%s\n", input);
 		while (count != nRead) {
 			if (currentState->handler) {
@@ -92,7 +95,13 @@ int main(int argc, char** argv) {
 	Token *token_end = createToken(C_END, NULL, NULL, NULL, line_nr);
 	addToken(&tk, token_end);
 	printTokenList(tk);
-	printf("%d\n",isUnit(&tk) );
+	Symbols* symbols = isUnit(tk, crtVal);
+	printf("-------------------------\n");
+
+	printTokenList(tk);
+
+	printSymbols(symbols);
+	freeSymbols(&symbols);
 
 	int ln;
 	char* err = checkError(&ln);
@@ -101,7 +110,7 @@ int main(int argc, char** argv) {
 	printf("at line: %d\n", ln);
 	}
 	else printf("No error\n");
-	//freeTokenList(tk);
+	freeTokenList(tk);
 	return 0;
 }
 

@@ -202,7 +202,7 @@ void freeTokenList(Token* tk){
 	Token *tk_to_free;
 
 	tk_help = tk;
-	while (tk_help->next != NULL){
+	while (tk_help != NULL){
 		tk_to_free = tk_help;
 		tk_help = tk_help->next;
 		free(tk_to_free);
